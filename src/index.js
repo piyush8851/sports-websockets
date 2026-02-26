@@ -1,7 +1,7 @@
 import express from 'express';
+import { PORT } from './config/env.config.js';
 
 const app = express();
-const port = 8000;
 
 app.use(express.json());
 
@@ -9,8 +9,8 @@ app.get("/",(req,res) => {
     res.send("server running")
 });
 
-app.listen(port,() => {
-    console.log(`Server running at http://localhost:${port}`);
+app.listen(PORT,() => {
+    console.log(`Server running at http://localhost:${PORT}`);
     
 })
 
