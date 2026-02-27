@@ -15,12 +15,10 @@ matchRouter.get("/", async (req, res) => {
   const parsed = listMatchesQuerySchema.safeParse(req.query);
 
   if (!parsed.success) {
-    return res
-      .status(400)
-      .json({
-        error: "invalid payload",
-        details: JSON.stringify(parsed.error),
-      });
+    return res.status(400).json({
+      error: "invalid payload",
+      details: parsed.error.issues,
+    });
   }
 
   const limit = Math.min(parsed.data.limit ?? 50, MAX_LIMIT);
@@ -31,7 +29,7 @@ matchRouter.get("/", async (req, res) => {
       .from(matches)
       .orderBy(desc(matches.createdAt))
       .limit(limit);
-    
+
     res.json({ data });
   } catch (error) {
     return res.status(500).json({
@@ -42,16 +40,18 @@ matchRouter.get("/", async (req, res) => {
 
 matchRouter.post("/", async (req, res) => {
   const parsed = createMatchSchema.safeParse(req.body);
-  const {
-    data: { startTime, endTime, homeScore, awayScore },
-  } = parsed;
+
   if (!parsed.success) {
     return res.status(400).json({
       success: false,
       error: "Invalid Payload",
-      details: JSON.stringify(parsed.error),
+      details: parsed.error.issues,
     });
   }
+
+  const {
+    data: { startTime, endTime, homeScore, awayScore },
+  } = parsed;
 
   try {
     const [event] = await db
@@ -65,6 +65,12 @@ matchRouter.post("/", async (req, res) => {
         status: getMatchStatus(startTime, endTime),
       })
       .returning();
+
+    if(res.app.locals.broadCastMatchCreated){
+      console.log("inside broadcastMatchCreated");
+      
+      res.app.locals.broadCastMatchCreated(event);
+    }
 
     res.status(201).json({ data: event });
   } catch (error) {

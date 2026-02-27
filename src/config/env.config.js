@@ -2,6 +2,6 @@ import 'dotenv/config';
 
 
 export const {
-    PORT,
+    PORT,HOST,
     DB_URL
 } = process.env;
