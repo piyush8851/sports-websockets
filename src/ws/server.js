@@ -1,34 +1,49 @@
-import {WebSocket, WebSocketServer} from 'ws'
+import { WebSocket, WebSocketServer } from "ws";
 function sendJson(socket, payload) {
-    if(socket.readyState !== WebSocket.OPEN) return;
+  if (socket.readyState !== WebSocket.OPEN) return;
 
-    socket.send(JSON.stringify(payload))
+  socket.send(JSON.stringify(payload));
 }
 
-function broadCast(wss,payload) {
-    for(const client of wss.clients){
-        if(client.readyState == WebSocket.OPEN){
-            client.send(JSON.stringify(payload));
-        }   
+function broadCast(wss, payload) {
+  for (const client of wss.clients) {
+    if (client.readyState == WebSocket.OPEN) {
+      client.send(JSON.stringify(payload));
     }
+  }
 }
 
-export function attachWebSocketServer(server){
-    const wss = new WebSocketServer({
-        server,
-        path: '/ws',
-        maxPayload: 1024 * 1024
+export function attachWebSocketServer(server) {
+  const wss = new WebSocketServer({
+    server,
+    path: "/ws",
+    maxPayload: 1024 * 1024,
+  });
+
+  wss.on("connection", (socket) => {
+    socket.isAlive = true;
+    socket.on("pong", () => {
+      socket.isAlive = true;
     });
 
-    wss.on('connection', (socket) => {
-        sendJson(socket, {type: 'welcome'});
+    sendJson(socket, { type: "welcome" });
 
-        socket.on('error', console.error);
-    })
+    socket.on("error", console.error);
+  });
 
-    function broadCastMatchCreated(match){
-        broadCast(wss, {type: 'match_created', data: match})
-    }
+  const interval = setInterval(() => {
+    wss.clients.forEach((ws) => {
+      if (ws.isAlive === false) return ws.terminate();
+      ws.isAlive = false;
+      ws.ping();
+    });
+  }, 30000);
 
-    return {broadCastMatchCreated: broadCastMatchCreated};
+  wss.on("close", () => clearInterval(interval));
+
+  function broadCastMatchCreated(match) {
+    broadCast(wss, { type: "match_created", data: match });
+  }
+
+  return { broadCastMatchCreated: broadCastMatchCreated };
 }
